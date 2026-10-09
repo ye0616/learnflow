@@ -1,0 +1,732 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 低饱和米黄色系 — 温柔纸质感 */
+    --color-bg: #FAF7F2;
+    --color-bg-alt: #F2EDE4;
+    --color-sidebar: #F5F0E8;
+    --color-sidebar-border: #E6DDD0;
+    --color-card: #FDFBF8;
+    --color-border: #DDD5C8;
+    --color-border-light: #EAE3D8;
+    --color-sketch: #C5BAA8;
+
+    /* 文字 — 温暖深棕 */
+    --color-text-primary: #3A342A;
+    --color-text-secondary: #7A6F60;
+    --color-text-muted: #A89E8E;
+
+    /* 强调色 — 低饱和暖金 */
+    --color-accent: #B8956A;
+    --color-accent-light: #D4B88C;
+    --color-accent-bg: #F5EDE0;
+    --color-accent-dark: #96754C;
+
+    /* 水彩晕染色 */
+    --wc-blue: rgba(122, 175, 200, 0.12);
+    --wc-green: rgba(106, 170, 130, 0.12);
+    --wc-warm: rgba(196, 149, 90, 0.12);
+    --wc-rose: rgba(200, 128, 112, 0.10);
+    --wc-purple: rgba(138, 123, 170, 0.10);
+
+    /* 手绘风格圆角 */
+    --radius-sketch-a: 30px 8px 25px 12px;
+    --radius-sketch-b: 12px 25px 8px 30px;
+    --radius-sketch-c: 20px 12px 28px 8px;
+    --radius-sketch-d: 8px 28px 12px 20px;
+    --radius-sketch-e: 24px 6px 18px 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    /* 多层纸纹肌理 — 更真实的素描纸效果 */
+    background-image:
+      radial-gradient(ellipse at 18% 45%, rgba(210, 195, 170, 0.18) 0%, transparent 45%),
+      radial-gradient(ellipse at 82% 18%, rgba(200, 182, 155, 0.12) 0%, transparent 45%),
+      radial-gradient(ellipse at 60% 80%, rgba(188, 172, 148, 0.08) 0%, transparent 40%),
+      radial-gradient(circle, #D8CFC0 0.4px, transparent 0.4px),
+      repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(210,200,185,0.04) 23px, rgba(210,200,185,0.04) 24px),
+      repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(210,200,185,0.03) 23px, rgba(210,200,185,0.03) 24px);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 18px 18px, 100% 100%, 100% 100%;
+  }
+
+  /* 手绘装饰字体 */
+  .font-sketch { font-family: 'Caveat', cursive; }
+
+  /* 文字轻微抖动 — 模拟手写不齐 */
+  .font-wobble span,
+  .font-wobble {
+    display: inline-block;
+  }
+  .font-wobble > span:nth-child(odd) { transform: rotate(-0.3deg); }
+  .font-wobble > span:nth-child(even) { transform: rotate(0.3deg); }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #C5BAA8;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #A99080; }
+}
+
+@layer components {
+  /* ===== 手绘卡片系统 — 水彩晕染版本 ===== */
+
+  .sketch-card {
+    position: relative;
+    background: var(--color-card);
+    border: 1.5px solid var(--color-sketch);
+    padding: 1.25rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    box-shadow: 2px 3px 0 rgba(160, 140, 110, 0.06);
+    /* 水彩晕染底层 */
+  }
+  .sketch-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(ellipse at 30% 20%, rgba(245, 237, 224, 0.5), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .sketch-card > * { position: relative; z-index: 1; }
+
+  .sketch-card::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    border: 1px dashed transparent;
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  .sketch-card:hover {
+    transform: translateY(-3px) rotate(-0.5deg);
+    box-shadow: 4px 6px 0 rgba(160, 140, 110, 0.1);
+    border-color: var(--color-accent-light);
+  }
+
+  /* 水彩变体卡片 */
+  .sketch-card.wc-blue::before { background: radial-gradient(ellipse at 30% 20%, var(--wc-blue), transparent 70%); }
+  .sketch-card.wc-green::before { background: radial-gradient(ellipse at 70% 30%, var(--wc-green), transparent 70%); }
+  .sketch-card.wc-warm::before { background: radial-gradient(ellipse at 50% 50%, var(--wc-warm), transparent 70%); }
+  .sketch-card.wc-rose::before { background: radial-gradient(ellipse at 20% 60%, var(--wc-rose), transparent 70%); }
+  .sketch-card.wc-purple::before { background: radial-gradient(ellipse at 60% 70%, var(--wc-purple), transparent 70%); }
+
+  /* 不同形状的手绘卡片 */
+  .sketch-a { border-radius: var(--radius-sketch-a); }
+  .sketch-b { border-radius: var(--radius-sketch-b); }
+  .sketch-c { border-radius: var(--radius-sketch-c); }
+  .sketch-d { border-radius: var(--radius-sketch-d); }
+  .sketch-e { border-radius: var(--radius-sketch-e); }
+
+  /* 手绘按钮 — 铅笔笔触感 */
+  .btn-primary {
+    @apply font-medium px-4 py-2 transition-all duration-200 flex items-center gap-2;
+    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+    color: #FFF8F0;
+    border-radius: var(--radius-sketch-c);
+    border: 1.5px solid var(--color-accent-dark);
+    box-shadow: 2px 3px 0 rgba(150, 117, 76, 0.15);
+    position: relative;
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, var(--color-accent-dark), #7A5A30);
+    transform: translateY(-1px) rotate(0.5deg);
+    box-shadow: 3px 4px 0 rgba(150, 117, 76, 0.2);
+  }
+  .btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: 1px 1px 0 rgba(150, 117, 76, 0.15);
+  }
+
+  .btn-secondary {
+    @apply font-medium px-4 py-2 transition-colors duration-200 flex items-center gap-2;
+    background: var(--color-bg-alt);
+    color: var(--color-text-secondary);
+    border: 1.5px solid var(--color-sketch);
+    border-radius: var(--radius-sketch-d);
+  }
+  .btn-secondary:hover {
+    background: var(--color-border);
+    color: var(--color-text-primary);
+    transform: rotate(-0.5deg);
+  }
+
+  .btn-ghost {
+    @apply font-medium px-3 py-2 transition-colors duration-200 flex items-center gap-2;
+    color: var(--color-text-muted);
+    border-radius: var(--radius-sketch-e);
+  }
+  .btn-ghost:hover {
+    background: var(--color-bg-alt);
+    color: var(--color-text-secondary);
+  }
+
+  /* 普通卡片 */
+  .card {
+    @apply p-4;
+    background: var(--color-card);
+    border: 1.5px solid var(--color-sketch);
+    border-radius: var(--radius-sketch-c);
+    box-shadow: 2px 3px 0 rgba(160, 140, 110, 0.06);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .card-hover {
+    @apply card cursor-pointer;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px) rotate(-0.3deg);
+    box-shadow: 3px 5px 0 rgba(160, 140, 110, 0.1);
+  }
+
+  /* 侧边栏导航 */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 transition-all duration-200 cursor-pointer text-sm font-medium;
+    color: var(--color-text-muted);
+    border-radius: var(--radius-sketch-e);
+    border: 1.5px solid transparent;
+  }
+  .nav-item:hover {
+    background: var(--color-accent-bg);
+    color: var(--color-text-primary);
+    transform: translateX(2px) rotate(-0.3deg);
+    border-color: var(--color-border-light);
+  }
+  .nav-item.active {
+    background: linear-gradient(135deg, var(--color-accent-bg), #EDE0CC);
+    color: var(--color-accent-dark);
+    border: 1.5px solid var(--color-accent-light);
+    box-shadow: 1px 2px 0 rgba(150, 117, 76, 0.1);
+  }
+
+  /* 标签 */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium;
+    border-radius: var(--radius-sketch-e);
+    border: 1px solid var(--color-border);
+  }
+
+  /* 进度条 — 铅笔笔触风格 */
+  .progress-bar {
+    @apply h-2.5 overflow-hidden;
+    background: var(--color-bg-alt);
+    border-radius: 8px;
+    position: relative;
+  }
+  /* 铅笔纹理叠加 */
+  .progress-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      rgba(0,0,0,0.02) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+    pointer-events: none;
+  }
+  .progress-fill {
+    @apply h-full transition-all duration-700;
+    background: linear-gradient(90deg, var(--color-accent-light), var(--color-accent));
+    border-radius: inherit;
+    /* 铅笔笔触不均匀感 */
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.08);
+  }
+
+  /* Learn 对话气泡 */
+  .learn-bubble {
+    background: var(--color-bg-alt);
+    color: var(--color-text-primary);
+    border: 1.5px solid var(--color-sketch);
+    border-radius: var(--radius-sketch-b);
+    padding: 0.75rem;
+    position: relative;
+  }
+  /* 铅笔阴影 */
+  .learn-bubble::before {
+    content: '';
+    position: absolute;
+    left: 2px; top: 2px;
+    width: 100%; height: 100%;
+    border-radius: inherit;
+    border: 1px solid var(--color-border-light);
+    transform: translate(-1px, -1px);
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  /* 热力图 */
+  .heatmap-cell {
+    @apply rounded transition-all duration-200 hover:scale-125 cursor-pointer;
+    border: 1px solid var(--color-border-light);
+  }
+
+  /* ===== React Flow 编辑器手绘风格覆盖 ===== */
+  .react-flow__background {
+    background-color: var(--color-bg);
+    background-image:
+      radial-gradient(ellipse at 30% 40%, rgba(210, 195, 175, 0.12) 0%, transparent 50%),
+      radial-gradient(circle, #D8CFC0 0.3px, transparent 0.3px);
+    background-size: 100% 100%, 24px 24px;
+  }
+
+  .react-flow__minimap {
+    border-radius: var(--radius-sketch-a);
+    overflow: hidden;
+    box-shadow: 2px 3px 0 rgba(160, 140, 110, 0.1);
+    border: 1.5px solid var(--color-sketch);
+  }
+
+  .react-flow__controls {
+    border-radius: var(--radius-sketch-b);
+    overflow: hidden;
+    box-shadow: 2px 3px 0 rgba(160, 140, 110, 0.1);
+    border: 1.5px solid var(--color-sketch) !important;
+  }
+
+  .react-flow__controls-button {
+    background: var(--color-card) !important;
+    border-color: var(--color-sketch) !important;
+    color: var(--color-text-secondary) !important;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .react-flow__controls-button:hover {
+    background: var(--color-accent-bg) !important;
+    color: var(--color-accent) !important;
+  }
+  .react-flow__controls-button svg {
+    fill: var(--color-text-secondary);
+  }
+  .react-flow__controls-button:hover svg {
+    fill: var(--color-accent);
+  }
+}
+
+/* ===== React Flow 全局覆盖 ===== */
+.react-flow__node { font-family: 'Inter', 'PingFang SC', system-ui, sans-serif; }
+
+.react-flow__edge-path {
+  stroke-width: 2;
+  stroke: var(--color-sketch);
+  stroke-dasharray: 8 4;
+  opacity: 0.6;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease;
+}
+
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  background: var(--color-card) !important;
+  border: 2px solid var(--color-sketch) !important;
+  border-radius: 50% 40% 60% 50%;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.react-flow__handle:hover {
+  border-color: var(--color-accent) !important;
+  transform: scale(1.3);
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--color-accent) !important;
+  stroke-width: 2.5px;
+  stroke-dasharray: none;
+  opacity: 1;
+}
+
+/* ===== 手绘动画 ===== */
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-3px) rotate(0.5deg); }
+  75% { transform: translateY(2px) rotate(-0.3deg); }
+}
+
+@keyframes gentle-wobble {
+  0%, 100% { transform: rotate(-0.5deg); }
+  50% { transform: rotate(0.5deg); }
+}
+
+@keyframes sketch-underline-draw {
+  0% { width: 0; }
+  100% { width: 100%; }
+}
+
+@keyframes doodle-spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeSlideIn {
+  0% { opacity: 0; transform: translateY(10px) rotate(-1deg); }
+  100% { opacity: 1; transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes pencil-scribble {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes bounce-in {
+  0% { opacity: 0; transform: translateY(-20px) scale(0.8); }
+  60% { opacity: 1; transform: translateY(5px) scale(1.05); }
+  80% { transform: translateY(-3px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-bounce-in { animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+
+
+.animate-float { animation: gentle-float 4s ease-in-out infinite; }
+.animate-wobble { animation: gentle-wobble 3s ease-in-out infinite; }
+.animate-fade-in { animation: fadeSlideIn 0.5s ease-out forwards; }
+.animate-breathe { animation: gentle-breathe 5s ease-in-out infinite; }
+
+/* 手绘下划线装饰 */
+.sketch-underline {
+  position: relative;
+  display: inline-block;
+}
+.sketch-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 3px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12'%3E%3Cpath d='M0 6 Q25 0 50 6 T100 6 T150 6 T200 6' fill='none' stroke='%23B8956A' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 200px 12px;
+  opacity: 0.5;
+}
+
+/* 装饰性手绘圆圈 */
+.sketch-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-sketch);
+  border-radius: 50% 45% 55% 48%;
+  position: relative;
+}
+.sketch-circle::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 1px dashed var(--color-border-light);
+  border-radius: 50% 45% 55% 48%;
+  animation: doodle-spin-slow 20s linear infinite;
+  opacity: 0.4;
+}
+
+/* 手绘高亮标记 — 水彩荧光笔 */
+.sketch-highlight {
+  position: relative;
+  display: inline;
+  padding: 2px 6px;
+  margin: -2px -6px;
+}
+.sketch-highlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(184, 149, 106, 0.2), rgba(212, 184, 140, 0.15));
+  border-radius: 4px 2px 3px 1px;
+  transform: rotate(-0.5deg);
+  z-index: -1;
+}
+
+/* 节点选中效果 */
+.react-flow__node.selected {
+  outline: none;
+}
+
+/* 输入框 — 手绘风格 */
+input, textarea, select {
+  background: var(--color-card);
+  border: 1.5px solid var(--color-sketch);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sketch-e);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+input::placeholder, textarea::placeholder { color: var(--color-text-muted); }
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--color-accent-light);
+  box-shadow: 2px 3px 0 rgba(184, 149, 106, 0.1);
+  transform: rotate(-0.2deg);
+}
+
+/* 打字机效果 */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.cursor-blink::after {
+  content: '|';
+  animation: blink 1s infinite;
+  margin-left: 1px;
+  color: var(--color-accent);
+}
+
+/* 装饰性涂鸦边框 */
+.sketch-border-deco {
+  position: relative;
+}
+.sketch-border-deco::before {
+  content: '';
+  position: absolute;
+  top: -4px; left: -4px; right: -4px; bottom: -4px;
+  border: 1px dashed var(--color-border);
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* ===== 手绘涂鸦组件类 ===== */
+/* 涂鸦装饰浮层 */
+.doodle-deco {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.12;
+}
+
+/* 铅笔注解 */
+.pencil-note {
+  font-family: 'Caveat', cursive;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  transform: rotate(-2deg);
+  opacity: 0.7;
+}
+
+/* 手绘箭头 */
+.sketch-arrow {
+  position: relative;
+}
+.sketch-arrow::after {
+  content: '';
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid var(--color-sketch);
+  transform: translateY(-50%) rotate(5deg);
+}
+
+/* 水彩标签 */
+.watercolor-tag {
+  @apply inline-flex items-center px-2 py-0.5 text-xs;
+  border-radius: var(--radius-sketch-e);
+  border: 1px solid var(--color-border-light);
+  position: relative;
+}
+.watercolor-tag::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.3;
+}
+
+/* ===== 增强动画系统 ===== */
+
+/* 交错入场 — dashboard 卡片逐个浮现 */
+@keyframes staggerFadeUp {
+  0% { opacity: 0; transform: translateY(16px) rotate(-0.5deg); }
+  100% { opacity: 1; transform: translateY(0) rotate(0deg); }
+}
+
+.animate-stagger {
+  opacity: 0;
+  animation: staggerFadeUp 0.45s ease-out forwards;
+}
+.animate-stagger-delay-1 { animation-delay: 0.05s; }
+.animate-stagger-delay-2 { animation-delay: 0.1s; }
+.animate-stagger-delay-3 { animation-delay: 0.15s; }
+.animate-stagger-delay-4 { animation-delay: 0.2s; }
+.animate-stagger-delay-5 { animation-delay: 0.25s; }
+.animate-stagger-delay-6 { animation-delay: 0.3s; }
+
+/* 标题呼吸效果 — hover 时轻柔放大 */
+@keyframes titleBreath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+.breath-hover:hover {
+  animation: titleBreath 2s ease-in-out infinite;
+}
+
+/* 卡片悬浮上浮 — 比基础版更自然 */
+@keyframes cardLift {
+  0% { transform: translateY(0); box-shadow: 2px 3px 0 rgba(160,140,110,0.06); }
+  100% { transform: translateY(-3px) rotate(-0.5deg); box-shadow: 4px 7px 0 rgba(160,140,110,0.12); }
+}
+.card-lift-hover { transition: transform 0.25s ease-out, box-shadow 0.25s ease-out; }
+.card-lift-hover:hover {
+  transform: translateY(-3px) rotate(-0.4deg);
+  box-shadow: 4px 6px 0 rgba(160,140,110,0.1);
+}
+
+/* 头像脉动 — Marvis 出场效果 */
+@keyframes avatarPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(184,149,106,0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(184,149,106,0); }
+}
+.avatar-pulse {
+  animation: avatarPulse 3s ease-in-out infinite;
+}
+
+/* 进度条流动光泽 */
+@keyframes progressShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.progress-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+  animation: progressShimmer 2.5s ease-in-out infinite;
+}
+
+/* 地图光点脉动 */
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+.dot-pulse { animation: dotPulse 2.5s ease-in-out infinite; }
+.dot-pulse-delay-1 { animation-delay: 0s; }
+.dot-pulse-delay-2 { animation-delay: 0.6s; }
+.dot-pulse-delay-3 { animation-delay: 1.2s; }
+.dot-pulse-delay-4 { animation-delay: 1.8s; }
+
+/* 打字机光标 */
+@keyframes typeCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+.type-cursor::after {
+  content: '|';
+  display: inline-block;
+  color: var(--color-accent);
+  animation: typeCursor 1.2s ease-in-out infinite;
+  margin-left: 2px;
+  font-weight: 300;
+}
+
+/* 完成勾选弹跳 */
+@keyframes checkBounce {
+  0% { transform: scale(0) rotate(-45deg); }
+  60% { transform: scale(1.2) rotate(0deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.check-bounce {
+  animation: checkBounce 0.35s ease-out;
+}
+
+/* 打字中跳动小圆点 */
+@keyframes typingBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-6px); opacity: 0.9; }
+}
+
+/* 消息入场 */
+@keyframes msgEnter {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.msg-enter {
+  animation: msgEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 对话框 hover 微交互 */
+.chat-bubble {
+  transition: box-shadow 0.2s ease;
+}
+
+/* 发送按钮 active */
+.send-btn:active {
+  transform: scale(0.94) !important;
+}
+
+/* 对话区滚动条 */
+.chat-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: rgba(180,160,130,0.25);
+  border-radius: 4px;
+}
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(180,160,130,0.4);
+}
+
+/* 闪烁星星 */
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.12; transform: scale(1) rotate(0deg); }
+  25% { opacity: 0.35; transform: scale(1.3) rotate(15deg); }
+  75% { opacity: 0.08; transform: scale(0.9) rotate(-10deg); }
+}
+.star-twinkle-1 { animation: starTwinkle 3.5s ease-in-out infinite; }
+.star-twinkle-2 { animation: starTwinkle 4s ease-in-out 0.8s infinite; }
+.star-twinkle-3 { animation: starTwinkle 3s ease-in-out 1.6s infinite; }
+
+/* 按钮涟漪效果 */
+@keyframes btnRipple {
+  0% { transform: scale(0); opacity: 0.5; }
+  100% { transform: scale(2); opacity: 0; }
+}
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+
+/* prefers-reduced-motion 支持 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-stagger,
+  .animate-stagger-delay-1,
+  .animate-stagger-delay-2,
+  .animate-stagger-delay-3,
+  .animate-stagger-delay-4,
+  .animate-stagger-delay-5,
+  .animate-stagger-delay-6 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .breath-hover:hover { animation: none; }
+  .avatar-pulse { animation: none; }
+  .progress-shimmer::after { animation: none; }
+  .dot-pulse { animation: none; }
+  .star-twinkle-1,
+  .star-twinkle-2,
+  .star-twinkle-3 { animation: none; }
+  .card-lift-hover { transition: none; }
+  .card-lift-hover:hover { transform: none; box-shadow: 2px 3px 0 rgba(160,140,110,0.06); }
+  .msg-enter { animation: none; opacity: 1; transform: none; }
+  .chat-bubble { transition: none; }
+  .send-btn { transition: none; }
+  .send-btn:hover { transform: none !important; }
+  .send-btn:active { transform: none !important; }
+}

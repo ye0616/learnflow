@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>虚拟学习室</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #1a1a2e; font-family: Arial, sans-serif; }
+  canvas { display: block; }
+  #info { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: white; font-size: 20px; font-weight: bold; letter-spacing: 2px; pointer-events: none; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+  #controls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #aaa; font-size: 12px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="info" style="display:none"></div>
+<div id="controls">拖拽旋转 | 滚轮缩放 | 右键平移</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf8f9fa);
+scene.fog = new THREE.Fog(0xf8f9fa, 90, 220);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(24, 42, 21);
+camera.lookAt(-12, 0, -3);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(-12, 0, -3);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI / 2.3;
+controls.update();
+
+// ─── 灯光 ───
+scene.add(new THREE.AmbientLight(0xffffff, 2.8));
+const sun = new THREE.DirectionalLight(0xffffff, 4.5);
+sun.position.set(35, 55, 25);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 220;
+sun.shadow.camera.left = -90; sun.shadow.camera.right = 90;
+sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
+sun.shadow.bias = -0.00008;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xccddff, 1.5);
+fill.position.set(-20, 10, -12);
+scene.add(fill);
+
+// ─── 材质 ───
+const M = (c, r=0.3, m=0) => new THREE.MeshStandardMaterial({ color:c, roughness:r, metalness:m });
+const matFloor = M(0xeeeeee, 0.75);
+const matDeskTop = M(0xfafafa, 0.18, 0.02);
+const matDeskEdge = M(0xe8e8e8, 0.2);
+const matLeg = M(0xd5d5d5, 0.25, 0.5);
+const matDark = M(0x2a2a2a, 0.35, 0.15);
+const matScreen = M(0x1a1a1a, 0.1, 0.3);
+const matScreenBlue = M(0x3498db, 0.08, 0.25);
+matScreenBlue.emissive = new THREE.Color(0x2980b9);
+matScreenBlue.emissiveIntensity = 0.5;
+const matWood = M(0xD2B48C, 0.5);
+const matWoodDark = M(0xB8956A, 0.5);
+const matSeatBase = M(0x3a3a3a, 0.3, 0.7);
+const matSeatCushion = M(0x444444, 0.55);
+const matSeatBack = M(0x3a3a3a, 0.5, 0.15);
+const matWhite = M(0xf5f5f5, 0.3, 0.05);
+const matSilver = M(0xbdc3c7, 0.2, 0.6);
+const matCoffee = M(0xC0392B, 0.4, 0.1);
+const matPlantLeaf = M(0x27ae60, 0.7);
+const matPlantLeaf2 = M(0x2ecc71, 0.65);
+
+// ─── 地面 ───
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(140, 140), matFloor);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -0.05;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ─── 短函数 ───
+function B(w, h, d, mat, pos, rot=[0,0,0]) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(pos[0], pos[1], pos[2]);
+  m.rotation.set(rot[0], rot[1], rot[2]);
+  m.castShadow = true; m.receiveShadow = true;
+  scene.add(m); return m;
+}
+function C(rt, rb, h, mat, pos, seg=16) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.position.set(pos[0], pos[1], pos[2]);
+  m.castShadow = true; m.receiveShadow = true;
+  scene.add(m); return m;
+}
+function S(r, mat, pos) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat);
+  m.position.set(pos[0], pos[1], pos[2]);
+  m.castShadow = true; m.receiveShadow = true;
+  scene.add(m); return m;
+}
+
+// ══════════════════════════════════════
+// 办公区：精致工位
+// ══════════════════════════════════════
+
+const deskW = 7.5, deskD = 4.5, deskH = 0.22, deskTop = 3.5;
+const chairSeatH = 1.6;  // 椅子座面高度，明显低于桌面
+
+function workstation(cx, cz, screenBlue = false) {
+  // ── 桌面 ──
+  B(deskW, deskH, deskD, matDeskTop, [cx, deskTop, cz]);
+  // 桌面下沿
+  B(deskW+0.1, 0.12, deskD+0.1, matDeskEdge, [cx, deskTop - deskH/2 - 0.06, cz]);
+
+  // ── 桌腿（四根圆柱，更精致）──
+  const legR = 0.22;
+  [[-deskW/2+1, -deskD/2+0.8], [deskW/2-1, -deskD/2+0.8],
+   [-deskW/2+1, deskD/2-0.8], [deskW/2-1, deskD/2-0.8]].forEach(([ox, oz]) => {
+    C(legR, legR, deskTop - deskH/2, matLeg, [cx + ox, (deskTop - deskH/2)/2, cz + oz]);
+    // 桌腿底部脚垫
+    C(legR*1.3, legR*1.3, 0.08, matDark, [cx + ox, 0.04, cz + oz]);
+  });
+
+  // ── 横梁连接 ──
+  B(deskW-2, 0.12, 0.25, matLeg, [cx, deskTop*0.45, cz - deskD/2+0.8]);
+  B(deskW-2, 0.12, 0.25, matLeg, [cx, deskTop*0.45, cz + deskD/2-0.8]);
+
+  // ── 挡板（桌面前方下）──
+  B(deskW-0.4, 1.2, 0.15, matDeskEdge, [cx, deskTop - 0.6, cz - deskD/2 + 0.08]);
+
+  // ── 显示器 ──
+  const scrW = 3.6, scrH = 2.2, scrT = 0.15;
+  const scrY = deskTop + deskH/2 + scrH/2 + 0.25;
+
+  // 底座圆盘
+  C(0.7, 0.8, 0.12, matDark, [cx, deskTop + deskH/2 + 0.06, cz - 1]);
+  // 支柱
+  C(0.12, 0.18, 0.9, matDark, [cx, deskTop + deskH/2 + 0.5, cz - 1]);
+  // 屏幕背壳
+  B(scrW, scrH, scrT, matDark, [cx, scrY, cz - 0.95]);
+  // 亮屏面 — 使用克隆材质，每个屏幕独立
+  const baseScreenMat = screenBlue ? matScreenBlue : matScreen;
+  const screenMat = baseScreenMat.clone();
+  const screenFace = B(scrW-0.25, scrH-0.25, 0.04, screenMat, [cx, scrY, cz - 0.84]);
+  // 底部边框条（略宽）
+  B(scrW, 0.14, scrT+0.02, matDark, [cx, scrY - scrH/2 + 0.07, cz - 0.95]);
+  // 品牌标（屏幕下方小横条）
+  B(0.6, 0.04, 0.05, matLeg, [cx, scrY - scrH/2 + 0.22, cz - 0.83]);
+
+  // ── 键盘托盘 ──
+  B(1.6, 0.06, 0.55, matDark, [cx, deskTop + deskH/2 - 0.06, cz + 0.35]);
+
+  // ── 抽屉柜（三斗，带拉手）──
+  const drX = cx + deskW/2 - 0.6, drZ = cz + 1;
+  B(1.2, 2.2, 1.4, matWood, [drX, 1.1, drZ]);
+  for (let d = 0; d < 3; d++) {
+    B(1.05, 0.06, 1.25, matWoodDark, [drX, 0.2 + d*0.7, drZ]);
+    // 拉手
+    B(0.35, 0.04, 0.06, matSilver, [drX, 0.35 + d*0.7, drZ + 0.6]);
+  }
+
+  // ── 马克杯 ──
+  C(0.18, 0.16, 0.5, matWhite, [cx + 0.8, deskTop + deskH/2 + 0.25, cz + 0.8]);
+  // 杯把
+  const handleG = new THREE.TorusGeometry(0.2, 0.04, 8, 8, Math.PI);
+  const handle = new THREE.Mesh(handleG, matWhite);
+  handle.position.set(cx + 0.95, deskTop + deskH/2 + 0.25, cz + 0.8);
+  handle.rotation.set(0, Math.PI/2, 0);
+  handle.castShadow = true; scene.add(handle);
+
+  // ── 简约办公椅（面向桌子）──
+  const chZ = cz + 3.8;
+
+  // 四条腿
+  const legPos = [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]];
+  legPos.forEach(([lx, lz]) => {
+    C(0.08, 0.08, chairSeatH, matDark, [cx + lx, chairSeatH/2, chZ + lz]);
+  });
+  // 座垫
+  B(1.4, 0.3, 1.4, matSeatCushion, [cx, chairSeatH + 0.15, chZ]);
+  // 靠背（在椅子后方，即远离桌子侧）
+  B(1.3, 1.5, 0.12, matSeatBack, [cx, chairSeatH + 1.05, chZ + 0.75]);
+
+  return { screenFace };
+}
+
+// ══════════════════════════════════════
+// 3列 × 2排
+// ══════════════════════════════════════
+
+const colSpacing = 14;
+const rowSpacing = 16;
+const deskScreens = []; // 存储每个工位的屏幕mesh引用
+
+for (let row = 0; row < 2; row++) {
+  for (let col = 0; col < 3; col++) {
+    const cx = -14 + col * colSpacing;
+    const cz = -6 + row * rowSpacing;
+    const isActive = (col === 0 && row === 0);
+    const idx = row * 3 + col;
+    const { screenFace } = workstation(cx, cz, isActive);
+    deskScreens[idx] = { mesh: screenFace, defaultColor: isActive ? 0x3498db : 0x1a1a1a };
+  }
+}
+
+// ══════════════════════════════════════
+// 茶水间（左侧）
+// ══════════════════════════════════════
+
+const kx = -34, kz = -5;
+
+// 橱柜主体
+B(13, 3.2, 4.5, matWood, [kx, 1.6, kz]);
+// 台面
+B(13.2, 0.2, 4.7, matDeskTop, [kx, 3.3, kz]);
+// 柜门（四个）
+for (let i = 0; i < 4; i++) {
+  B(2.8, 2.6, 0.15, matWoodDark, [kx - 4.2 + i*2.8, 1.5, kz + 2.1]);
+  // 拉手
+  B(0.5, 0.05, 0.06, matSilver, [kx - 3.5 + i*2.8, 2.1, kz + 2.2]);
+}
+// 底层抽屉
+B(12, 0.1, 4.2, matWoodDark, [kx, 0.25, kz]);
+
+// 咖啡机（台面上右侧）
+B(3, 2.2, 2, matSilver, [kx + 4.5, 4.5, kz]);
+// 咖啡机出水口
+C(0.5, 0.5, 0.3, matDark, [kx + 4.5, 5.7, kz - 0.5]);
+// 咖啡机顶部水箱
+B(2.5, 0.8, 1.5, new THREE.MeshStandardMaterial({ color:0xdddddd, roughness:0.15, transparent:true, opacity:0.6 }), [kx + 4.5, 6.1, kz]);
+// 咖啡机按钮
+C(0.15, 0.15, 0.08, matScreenBlue, [kx + 5.5, 5.2, kz + 0.5]);
+
+// 杯子（6个排列）
+for (let i = 0; i < 6; i++) {
+  C(0.3, 0.25, 0.9, matCoffee, [kx - 4 + i*1.5, 3.8, kz - 1.6]);
+  // 杯把
+  const hg2 = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 6, 6, Math.PI/2), matCoffee);
+  hg2.position.set(kx - 4 + i*1.5 + 0.25, 3.8, kz - 1.6);
+  hg2.rotation.set(0, -Math.PI/2, 0);
+  hg2.castShadow = true; scene.add(hg2);
+}
+
+// 两个调料罐
+C(0.55, 0.45, 1.4, matWood, [kx - 0.8, 4.1, kz - 1.5]);
+S(0.35, matWood, [kx - 0.8, 5.0, kz - 1.5]);
+C(0.45, 0.38, 1.1, new THREE.MeshStandardMaterial({ color:0xc9a87c, roughness:0.5 }), [kx + 1.2, 3.95, kz - 1.5]);
+S(0.28, matWood, [kx + 1.2, 4.7, kz - 1.5]);
+
+// 上方吊柜
+B(8, 2, 1.5, matWood, [kx - 2, 5.8, kz + 2]);
+B(3.8, 0.08, 1.3, matWoodDark, [kx - 2, 5.0, kz + 2]);
+
+// ══════════════════════════════════════
+// 健身区
+// ══════════════════════════════════════
+
+const gx = -34, gz = 12;
+
+// 跑步机底座
+B(11, 0.8, 3.5, matWhite, [gx, 0.4, gz]);
+// 跑带区域（深色）
+B(8.5, 0.15, 2.5, matDark, [gx, 0.85, gz]);
+// 跑带纹理线
+for (let l = 0; l < 6; l++) {
+  B(8.3, 0.02, 0.06, M(0x555555), [gx, 0.93, gz - 1 + l*0.4]);
+}
+// 侧边护栏
+B(8.5, 0.3, 0.15, matLeg, [gx, 1.0, gz - 1.2]);
+B(8.5, 0.3, 0.15, matLeg, [gx, 1.0, gz + 1.2]);
+// 前立柱
+C(0.2, 0.22, 4.5, matLeg, [gx - 4, 2.5, gz]);
+C(0.2, 0.22, 4.5, matLeg, [gx - 4, 2.5, gz + 1]);
+// 扶手横杆
+B(7.5, 0.15, 0.15, matLeg, [gx - 4, 4.6, gz + 0.5]);
+// 显示屏
+B(2.5, 1.5, 0.2, matScreen, [gx - 4.5, 4.9, gz + 0.5]);
+// 心率把手
+B(1.5, 0.12, 0.5, matDark, [gx - 3, 3.0, gz + 0.3]);
+
+// ══════════════════════════════════════
+// 盆栽装饰
+// ══════════════════════════════════════
+
+function plant(x, z, scale=1) {
+  const potG = new THREE.CylinderGeometry(0.55*scale, 0.45*scale, 1.3*scale, 14);
+  const pot = new THREE.Mesh(potG, matWood);
+  pot.position.set(x, 0.65*scale, z);
+  pot.castShadow = true; scene.add(pot);
+  // 盆沿
+  C(0.62*scale, 0.62*scale, 0.12*scale, matWoodDark, [x, 1.35*scale, z]);
+  // 叶子（多层球）
+  S(0.65*scale, matPlantLeaf, [x, 1.6*scale, z]);
+  S(0.5*scale, matPlantLeaf2, [x+0.2*scale, 1.4*scale, z-0.15*scale]);
+  S(0.45*scale, matPlantLeaf, [x-0.2*scale, 1.35*scale, z+0.1*scale]);
+  S(0.55*scale, matPlantLeaf2, [x, 1.85*scale, z-0.1*scale]);
+}
+
+plant(24, -8);
+plant(24, 14);
+plant(-22, -8);
+plant(-22, 14);
+// 办公区内部小盆栽
+plant(-6, -14, 0.7);
+plant(8, -14, 0.7);
+plant(-6, 12, 0.7);
+
+// ══════════════════════════════════════
+// 🐱 AI猫老师 — 橘猫造型
+// ══════════════════════════════════════
+
+const catGroup = new THREE.Group();
+catGroup.name = 'ai-cat-teacher';
+catGroup.userData = { isCat: true, clickable: true };
+
+const catOrange = new THREE.MeshStandardMaterial({ color: 0xf5a623, roughness: 0.5 });
+const catLightOrange = new THREE.MeshStandardMaterial({ color: 0xffd591, roughness: 0.55 });
+const catBelly = new THREE.MeshStandardMaterial({ color: 0xfff5e6, roughness: 0.7 });
+const catNoseMat = new THREE.MeshStandardMaterial({ color: 0xff8888, roughness: 0.4 });
+const catDark = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.5 });
+const catEyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
+const catEyeBlack = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.05 });
+const catStripes = new THREE.MeshStandardMaterial({ color: 0xd4891a, roughness: 0.55 });
+
+// 身体 — 椭圆体
+const bodyGeo = new THREE.SphereGeometry(0.65, 16, 12);
+bodyGeo.scale(1, 0.7, 1.25);
+const bodyMesh = new THREE.Mesh(bodyGeo, catOrange);
+bodyMesh.position.y = 0.85;
+bodyMesh.castShadow = true;
+catGroup.add(bodyMesh);
+
+// 白色肚皮
+const bellyGeo2 = new THREE.SphereGeometry(0.48, 12, 8);
+bellyGeo2.scale(1, 0.6, 1.15);
+const bellyMesh = new THREE.Mesh(bellyGeo2, catBelly);
+bellyMesh.position.set(0, 0.72, 0.12);
+bellyMesh.castShadow = true;
+catGroup.add(bellyMesh);
+
+// 头部
+const headGeo2 = new THREE.SphereGeometry(0.5, 16, 12);
+const headMesh = new THREE.Mesh(headGeo2, catOrange);
+headMesh.position.set(0, 1.35, 0.35);
+headMesh.castShadow = true;
+catGroup.add(headMesh);
+
+// 耳朵
+function makeEar(x) {
+  const earGroup = new THREE.Group();
+  const earGeo = new THREE.ConeGeometry(0.18, 0.42, 8);
+  const earOuter = new THREE.Mesh(earGeo, catOrange);
+  earOuter.position.y = 0.21;
+  earOuter.rotation.x = -0.15;
+  earOuter.castShadow = true;
+  earGroup.add(earOuter);
+
+  const innerGeo = new THREE.ConeGeometry(0.10, 0.28, 8);
+  const earInner = new THREE.Mesh(innerGeo, new THREE.MeshStandardMaterial({ color: 0xffccd5, roughness: 0.5 }));
+  earInner.position.set(0, 0.18, 0.02);
+  earInner.rotation.x = -0.15;
+  earGroup.add(earInner);
+
+  earGroup.position.set(x, 1.68, 0.42);
+  catGroup.add(earGroup);
+}
+makeEar(-0.2);
+makeEar(0.2);
+
+// 脸部花纹 — 额头M纹
+const stripeGeo = new THREE.BoxGeometry(0.06, 0.02, 0.15);
+for (let i = -2; i <= 2; i++) {
+  const stripe = new THREE.Mesh(stripeGeo, catStripes);
+  stripe.position.set(i * 0.07, 1.72, 0.58);
+  stripe.rotation.x = -0.3;
+  catGroup.add(stripe);
+}
+
+// 眼睛
+function makeEye(x) {
+  const white = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), catEyeWhite);
+  white.position.set(x, 1.44, 0.68);
+  catGroup.add(white);
+
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), catEyeBlack);
+  pupil.position.set(x, 1.44, 0.78);
+  pupil.name = 'cat-pupil';
+  catGroup.add(pupil);
+}
+makeEye(-0.16);
+makeEye(0.16);
+
+// 鼻子
+const noseMesh = new THREE.Mesh(
+  new THREE.ConeGeometry(0.06, 0.08, 6),
+  catNoseMat
+);
+noseMesh.position.set(0, 1.3, 0.75);
+noseMesh.rotation.x = -Math.PI / 2;
+catGroup.add(noseMesh);
+
+// 嘴巴
+const mouthGeo = new THREE.TorusGeometry(0.05, 0.015, 6, 4, Math.PI);
+[-0.025, 0.025].forEach(x => {
+  const mouthPart = new THREE.Mesh(mouthGeo.clone(), catDark);
+  mouthPart.position.set(x, 1.24, 0.76);
+  mouthPart.rotation.set(0, x > 0 ? 0 : Math.PI, -0.1);
+  catGroup.add(mouthPart);
+});
+
+// 胡须
+function makeWhisker(x, ry, rz) {
+  const whisker = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.004, 0.55, 4),
+    new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.3 })
+  );
+  whisker.position.set(x, 1.33, 0.7);
+  whisker.rotation.y = ry;
+  whisker.rotation.z = rz;
+  catGroup.add(whisker);
+}
+[-0.06, 0.06].forEach(x => {
+  makeWhisker(x, x > 0 ? -0.3 : 0.3, Math.PI / 7);
+  makeWhisker(x, x > 0 ? -0.5 : 0.5, Math.PI / 16);
+});
+
+// 前腿
+function makeLeg(x, z, front) {
+  const legGroup = new THREE.Group();
+  const upperGeo = new THREE.CylinderGeometry(0.11, 0.12, 0.4, 8);
+  const upper = new THREE.Mesh(upperGeo, catOrange);
+  upper.position.y = 0.2;
+  upper.castShadow = true;
+  legGroup.add(upper);
+
+  const pawGeo = new THREE.SphereGeometry(0.1, 8, 6);
+  pawGeo.scale(1, 0.45, 1.15);
+  const paw = new THREE.Mesh(pawGeo, catLightOrange);
+  paw.position.set(0, 0.03, front ? 0.04 : 0);
+  paw.castShadow = true;
+  legGroup.add(paw);
+
+  legGroup.position.set(x, 0.02, z);
+  legGroup.name = front ? 'cat-front-leg' : 'cat-back-leg';
+  catGroup.add(legGroup);
+}
+makeLeg(-0.3, -0.25, true);   // 左前
+makeLeg(0.3, -0.25, true);    // 右前
+makeLeg(-0.28, 0.35, false);  // 左后
+makeLeg(0.28, 0.35, false);   // 右后
+
+// 尾巴 — 弯曲线
+const tailCurvePts = [
+  new THREE.Vector3(0, 0.75, -0.7),
+  new THREE.Vector3(0.12, 1.0, -1.05),
+  new THREE.Vector3(0.3, 1.3, -0.95),
+  new THREE.Vector3(0.5, 1.55, -0.55),
+  new THREE.Vector3(0.58, 1.8, 0.0),
+];
+const tailCurve = new THREE.CatmullRomCurve3(tailCurvePts);
+const tailGeo = new THREE.TubeGeometry(tailCurve, 20, 0.07, 8, false);
+const tailMesh = new THREE.Mesh(tailGeo, catOrange);
+tailMesh.name = 'cat-tail';
+tailMesh.castShadow = true;
+catGroup.add(tailMesh);
+
+// 尾巴尖（白色）
+const tailTipGeo = new THREE.SphereGeometry(0.09, 8, 6);
+const tailTip = new THREE.Mesh(tailTipGeo, catBelly);
+tailTip.position.copy(tailCurvePts[4]);
+tailTip.name = 'cat-tail-tip';
+catGroup.add(tailTip);
+
+// AI 标识 — 小光环
+const haloGeo = new THREE.TorusGeometry(0.22, 0.04, 8, 12);
+const haloMat = new THREE.MeshStandardMaterial({
+  color: 0x8b5cf6,
+  roughness: 0.2,
+  emissive: 0x8b5cf6,
+  emissiveIntensity: 0.6,
+});
+const halo = new THREE.Mesh(haloGeo, haloMat);
+halo.position.set(0, 1.9, 0.35);
+halo.rotation.x = Math.PI / 4;
+halo.name = 'cat-halo';
+catGroup.add(halo);
+
+// 猫的整体缩放
+catGroup.scale.set(1.05, 1.05, 1.05);
+
+// 巡逻路径点
+const catWaypoints = [
+  new THREE.Vector3(-7, 0, 2),
+  new THREE.Vector3(-20, 0, -3),
+  new THREE.Vector3(-34, 0, -1),
+  new THREE.Vector3(-20, 0, 8),
+  new THREE.Vector3(0, 0, 10),
+  new THREE.Vector3(14, 0, 6),
+  new THREE.Vector3(7, 0, -2),
+  new THREE.Vector3(-10, 0, -10),
+  new THREE.Vector3(10, 0, -10),
+];
+
+catGroup.position.copy(catWaypoints[0]);
+catGroup.position.y = 0.02;
+scene.add(catGroup);
+
+// 巡逻状态
+let catPatrolIndex = 0;
+let catMoveSpeed = 1.8;
+let catRestTimer = 0;
+let catRestDuration = 0;
+let catLastTime = performance.now() / 1000;
+
+// 猫气泡
+let catBubble = null;
+let catBubbleTimer = null;
+
+function showCatBubble(text, duration = 4000) {
+  if (catBubble) { scene.remove(catBubble); if (catBubbleTimer) clearTimeout(catBubbleTimer); }
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 80;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(255,255,255,0.94)';
+  ctx.beginPath();
+  ctx.roundRect(10, 8, 236, 46, 12);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(60, 56);
+  ctx.lineTo(50, 66);
+  ctx.lineTo(70, 66);
+  ctx.fill();
+  ctx.fillStyle = '#7c3aed';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 31);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(4.5, 1.4, 1);
+  sprite.position.copy(catGroup.position);
+  sprite.position.y += 3.2;
+  scene.add(sprite);
+  catBubble = sprite;
+
+  catBubbleTimer = setTimeout(() => {
+    if (catBubble) { scene.remove(catBubble); catBubble = null; }
+  }, duration);
+}
+
+// 定时自动冒泡
+let catAutoBubbleTimer = 0;
+const catBubbleMessages = [
+  '🐱 喵~有问题问我哦！',
+  '📚 学习累了吗？休息一下',
+  '💡 我是你们的AI猫老师',
+  '🐾 喵~今天也要加油呀',
+  '✨ 点击我可以问任何问题',
+];
+
+// ══════════════════════════════════════
+// 工位坐标映射（sz = chair实际Z坐标）
+// ══════════════════════════════════════
+const deskPositions = [
+  { cx: -14, cz: -6, sx: -14, sz: -2.2 },
+  { cx:   0, cz: -6, sx:   0, sz: -2.2 },
+  { cx:  14, cz: -6, sx:  14, sz: -2.2 },
+  { cx: -14, cz: 10, sx: -14, sz: 13.8 },
+  { cx:   0, cz: 10, sx:   0, sz: 13.8 },
+  { cx:  14, cz: 10, sx:  14, sz: 13.8 },
+];
+
+// 工位与deskIndex的对应关系（与DESK_POSITIONS保持一致）
+const deskIndexMap = [
+  { cx: -14, cz: -6 },
+  { cx:   0, cz: -6 },
+  { cx:  14, cz: -6 },
+  { cx: -14, cz: 10 },
+  { cx:   0, cz: 10 },
+  { cx:  14, cz: 10 },
+];
+
+function getDeskIndexByPosition(cx, cz) {
+  for (let i = 0; i < deskIndexMap.length; i++) {
+    const d = deskIndexMap[i];
+    if (Math.abs(cx - d.cx) < 4 && Math.abs(cz - d.cz) < 4) return i;
+  }
+  return -1;
+}
+
+// ══════════════════════════════════════
+// 创建人物模型
+// ══════════════════════════════════════
+const memberFigures = []; // { id, name, color, group, deskIndex }
+
+function createPersonFigure(member) {
+  const group = new THREE.Group();
+  group.name = `member-${member.id}`;
+  group.userData = { memberId: member.id, deskIndex: member.deskIndex };
+
+  const color = new THREE.Color(member.color);
+  const BODY_H = 1.8;  // 身体高度
+
+  // 身体（圆柱体 - 放大1.5倍）
+  const bodyGeo = new THREE.CylinderGeometry(0.52, 0.6, BODY_H, 12);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = BODY_H / 2;  // 身体底端在local y=0
+  body.castShadow = true;
+  group.add(body);
+
+  // 头（球体 - 放大）
+  const headR = 0.48;
+  const headGeo = new THREE.SphereGeometry(headR, 12, 10);
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = BODY_H + headR * 0.85;
+  head.castShadow = true;
+  group.add(head);
+
+  // 头发
+  const hairGeo = new THREE.SphereGeometry(headR + 0.04, 12, 8, 0, Math.PI * 2, 0, Math.PI / 3);
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7 });
+  const hair = new THREE.Mesh(hairGeo, hairMat);
+  hair.position.y = BODY_H + headR * 1.0;
+  hair.castShadow = true;
+  group.add(hair);
+
+  // 手臂（放大）
+  [-0.7, 0.7].forEach(ox => {
+    const armGeo = new THREE.CylinderGeometry(0.15, 0.18, 1.5, 8);
+    const arm = new THREE.Mesh(armGeo, bodyMat);
+    arm.position.set(ox, BODY_H * 0.7, 0);
+    arm.rotation.z = ox > 0 ? -0.2 : 0.2;
+    arm.castShadow = true;
+    group.add(arm);
+  });
+
+  // 定位到椅子座面上（椅子座面顶部y = 1.75）
+  const pos = deskPositions[member.deskIndex];
+  const SEAT_TOP = 1.75;
+  if (pos) {
+    group.position.set(pos.sx, SEAT_TOP, pos.sz);
+  }
+
+  scene.add(group);
+
+  return {
+    id: member.id,
+    name: member.name,
+    color: member.color,
+    group,
+    deskIndex: member.deskIndex,
+  };
+}
+
+function updateMemberPosition(figure, deskIndex) {
+  const pos = deskPositions[deskIndex];
+  if (!pos) return;
+  figure.group.position.set(pos.sx, 1.75, pos.sz);
+  figure.deskIndex = deskIndex;
+  figure.group.userData.deskIndex = deskIndex;
+}
+
+// ══════════════════════════════════════
+// 工位屏幕颜色更新
+// ══════════════════════════════════════
+
+// 根据进度返回屏幕颜色
+function getScreenByProgress(progress) {
+  if (progress >= 100) return 0x10b981;  // 绿 — 全部完成
+  if (progress > 0)   return 0xf59e0b;   // 黄 — 进行中
+  return 0x6366f1;                        // 蓝紫 — 有人但还没开始
+}
+
+// ══════════════════════════════════════
+// 拖拽人物 + 点击检测
+// ══════════════════════════════════════
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+let dragFigure = null;
+let dragOffset = new THREE.Vector3();
+let pointerMoved = false;
+let pointerDownPos = { x: 0, y: 0 };
+
+// 跑步机区域检测
+const TREADMILL = { cx: -34, cz: 12, range: 6 };
+function isNearTreadmill(pos) {
+  return Math.abs(pos.x - TREADMILL.cx) < TREADMILL.range &&
+         Math.abs(pos.z - TREADMILL.cz) < TREADMILL.range;
+}
+
+// 茶水间区域检测
+const TEATABLE = { cx: -34, cz: -5, range: 6 };
+function isNearTeaTable(pos) {
+  return Math.abs(pos.x - TEATABLE.cx) < TEATABLE.range &&
+         Math.abs(pos.z - TEATABLE.cz) < TEATABLE.range;
+}
+
+// 正在跑步的人物及其计时器
+const runningFigures = new Map(); // figId → { timer, originalDesk }
+const teaBreakFigures = new Map();  // figId → { timer, originalDesk }
+let treadmillBubble = null;       // 跑步机上方的气泡 sprite
+let teaTableBubble = null;        // 茶桌上方的气泡 sprite
+let bubbleTimer = null;
+let teaBubbleTimer = null;
+
+// 创建气泡 sprite
+function createBubble(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 80;
+  const ctx = canvas.getContext('2d');
+  // 气泡背景
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.beginPath();
+  ctx.roundRect(10, 8, 236, 48, 14);
+  ctx.fill();
+  // 小三角
+  ctx.beginPath();
+  ctx.moveTo(45, 58);
+  ctx.lineTo(35, 66);
+  ctx.lineTo(55, 66);
+  ctx.fill();
+  // 文字
+  ctx.fillStyle = '#6d28d9';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 32);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(5, 1.6, 1);
+  return sprite;
+}
+
+function showBubbleAt(spriteRef, pos, msg, timerRef, duration) {
+  if (spriteRef.current) {
+    scene.remove(spriteRef.current);
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }
+  const sprite = createBubble(msg);
+  sprite.position.copy(pos);
+  scene.add(sprite);
+  spriteRef.current = sprite;
+  timerRef.current = setTimeout(() => {
+    if (spriteRef.current) {
+      scene.remove(spriteRef.current);
+      spriteRef.current = null;
+    }
+  }, duration);
+}
+
+function startRunning(fig) {
+  if (runningFigures.has(fig.id)) return;
+
+  // 把人物定位到跑步机上
+  fig.group.position.set(TREADMILL.cx, 0.8, TREADMILL.cz);
+  const savedDesk = fig.deskIndex;
+
+  // 5秒后自动回原位
+  const timer = setTimeout(() => {
+    runningFigures.delete(fig.id);
+    const pos = deskPositions[savedDesk];
+    if (pos) {
+      // 平滑动画回原位
+      animateToDesk(fig, savedDesk);
+    }
+  }, 5000);
+
+  runningFigures.set(fig.id, { timer, originalDesk: savedDesk });
+
+  // 跑步机上方冒气泡
+  const bubblePos1 = new THREE.Vector3(TREADMILL.cx, 6.8, TREADMILL.cz);
+  showBubbleAt(
+    { current: treadmillBubble },
+    bubblePos1,
+    '💪 劳逸结合，动起来更高效！',
+    { current: bubbleTimer },
+    3000
+  );
+}
+
+// ══════════════════════════════════════
+// 茶桌休息
+// ══════════════════════════════════════
+function startTeaBreak(fig) {
+  if (teaBreakFigures.has(fig.id)) return;
+
+  // 把人物定位到茶桌旁
+  fig.group.position.set(TEATABLE.cx + 3, 1.75, TEATABLE.cz - 3);
+  const savedDesk = fig.deskIndex;
+
+  // 5秒后自动回原位
+  const timer = setTimeout(() => {
+    teaBreakFigures.delete(fig.id);
+    const pos = deskPositions[savedDesk];
+    if (pos) {
+      animateToDesk(fig, savedDesk);
+    }
+  }, 5000);
+
+  teaBreakFigures.set(fig.id, { timer, originalDesk: savedDesk });
+
+  // 茶桌上冒气泡
+  const bubblePos2 = new THREE.Vector3(TEATABLE.cx, 5.8, TEATABLE.cz);
+  showBubbleAt(
+    { current: teaTableBubble },
+    bubblePos2,
+    '🍵 记得多喝水！',
+    { current: teaBubbleTimer },
+    3000
+  );
+}
+
+function animateToDesk(fig, deskIndex) {
+  const pos = deskPositions[deskIndex];
+  if (!pos) return;
+  const target = new THREE.Vector3(pos.sx, 1.75, pos.sz);
+  const start = fig.group.position.clone();
+  const startTime = performance.now();
+  const duration = 800;
+
+  function step(time) {
+    const elapsed = time - startTime;
+    const t = Math.min(elapsed / duration, 1);
+    // easeInOutCubic
+    const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    fig.group.position.lerpVectors(start, target, eased);
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      fig.group.position.copy(target);
+      fig.deskIndex = deskIndex;
+      fig.group.userData.deskIndex = deskIndex;
+    }
+  }
+  fig.deskIndex = deskIndex;
+  fig.group.userData.deskIndex = deskIndex;
+  requestAnimationFrame(step);
+}
+
+function stopRunning(fig) {
+  const data = runningFigures.get(fig.id);
+  if (data) {
+    clearTimeout(data.timer);
+    runningFigures.delete(fig.id);
+    animateToDesk(fig, data.originalDesk);
+  }
+  const teaData = teaBreakFigures.get(fig.id);
+  if (teaData) {
+    clearTimeout(teaData.timer);
+    teaBreakFigures.delete(fig.id);
+    animateToDesk(fig, teaData.originalDesk);
+  }
+}
+
+// 指针事件
+renderer.domElement.style.cursor = 'pointer';
+
+function setCursor(c) {
+  renderer.domElement.style.cursor = c;
+}
+
+function getPersonAtPointer(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const targets = [];
+  memberFigures.forEach(fig => {
+    fig.group.traverse(child => {
+      if (child.type === 'Mesh') targets.push({ mesh: child, figure: fig });
+    });
+  });
+
+  const hits = raycaster.intersectObjects(targets.map(t => t.mesh));
+  if (hits.length > 0) {
+    return targets.find(t => t.mesh === hits[0].object) || null;
+  }
+  return null;
+}
+
+function isClickOnCat(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const catTargets = [];
+  catGroup.traverse(child => {
+    if (child.type === 'Mesh' || child.type === 'Group') catTargets.push(child);
+  });
+  const hits = raycaster.intersectObjects(catTargets, true);
+  return hits.length > 0;
+}
+
+function getGroundPoint(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const pt = new THREE.Vector3();
+  const hit = raycaster.ray.intersectPlane(groundPlane, pt);
+  return hit ? pt : null;
+}
+
+renderer.domElement.addEventListener('pointerdown', (event) => {
+  pointerDownPos = { x: event.clientX, y: event.clientY };
+  pointerMoved = false;
+
+  // 优先检测是否点击了猫
+  if (isClickOnCat(event)) {
+    setCursor('pointer');
+    // 猫被点击 — 通知父页面打开聊天
+    window.parent.postMessage({ type: 'catClick' }, '*');
+    showCatBubble('🐱 喵~问我什么都可以！', 3000);
+    event.stopPropagation();
+    return;
+  }
+
+  const result = getPersonAtPointer(event);
+  if (result) {
+    dragFigure = result.figure;
+    const groundPt = getGroundPoint(event);
+    if (groundPt) {
+      dragOffset.copy(dragFigure.group.position).sub(groundPt);
+    }
+    setCursor('grabbing');
+    controls.enabled = false;
+    stopRunning(dragFigure);
+    event.stopPropagation();
+  }
+});
+
+window.addEventListener('pointermove', (event) => {
+  if (!dragFigure) {
+    // 悬停检测：猫优先
+    if (isClickOnCat(event)) {
+      setCursor('pointer');
+      return;
+    }
+    const result = getPersonAtPointer(event);
+    setCursor(result ? 'grab' : 'default');
+    return;
+  }
+
+  const dx = Math.abs(event.clientX - pointerDownPos.x);
+  const dy = Math.abs(event.clientY - pointerDownPos.y);
+  if (dx > 3 || dy > 3) pointerMoved = true;
+
+  const groundPt = getGroundPoint(event);
+  if (groundPt) {
+    const target = groundPt.add(dragOffset);
+    // 限制在可行走区域（避免拖出场景）
+    target.x = Math.max(-42, Math.min(30, target.x));
+    target.z = Math.max(-18, Math.min(28, target.z));
+    target.y = dragFigure.group.position.y; // 保持Y轴（坐着的高度）
+    dragFigure.group.position.copy(target);
+  }
+});
+
+window.addEventListener('pointerup', (event) => {
+  if (!dragFigure) return;
+
+  const fig = dragFigure;
+  dragFigure = null;
+  setCursor('pointer');
+  controls.enabled = true;
+
+  // 检测是否拖到了跑步机上
+  if (isNearTreadmill(fig.group.position)) {
+    startRunning(fig);
+  } else if (isNearTeaTable(fig.group.position)) {
+    startTeaBreak(fig);
+  }
+
+  // 如果没移动（点击），发送点击事件
+  if (!pointerMoved) {
+    window.parent.postMessage({
+      type: 'deskClick',
+      deskIndex: fig.deskIndex,
+      memberId: fig.id,
+    }, '*');
+  } else {
+    // 拖动了，通知父页面位置变更
+    window.parent.postMessage({
+      type: 'memberMoved',
+      memberId: fig.id,
+      position: {
+        x: fig.group.position.x,
+        z: fig.group.position.z,
+      },
+      onTreadmill: runningFigures.has(fig.id),
+    }, '*');
+  }
+});
+
+// 点击桌面区域检测（非人物）
+renderer.domElement.addEventListener('click', (event) => {
+  if (pointerMoved) return;
+  const result = getPersonAtPointer(event);
+  if (result) return; // 人物点击已在 pointerup 处理
+
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(scene.children, true);
+  for (const intersect of intersects) {
+    const obj = intersect.object;
+    const worldPos = new THREE.Vector3();
+    obj.getWorldPosition(worldPos);
+    if (worldPos.y > 3.2 && worldPos.y < 5.0) {
+      const di = getDeskIndexByPosition(worldPos.x, worldPos.z);
+      if (di >= 0) {
+        window.parent.postMessage({ type: 'deskClick', deskIndex: di }, '*');
+        return;
+      }
+    }
+  }
+});
+
+// ══════════════════════════════════════
+// 接收房间数据
+// ══════════════════════════════════════
+window.addEventListener('message', (event) => {
+  if (!event.data || event.data.type !== 'roomData') return;
+  const room = event.data.room;
+  if (!room || !room.members) return;
+
+  console.log('[3D学习室] 收到成员数据:', room.members.length, '人');
+
+  // 清除旧人物
+  memberFigures.forEach(fig => {
+    scene.remove(fig.group);
+  });
+  memberFigures.length = 0;
+
+  // 创建新人物
+  room.members.forEach(member => {
+    const fig = createPersonFigure(member);
+    memberFigures.push(fig);
+  });
+
+  // 更新屏幕颜色
+  updateDeskScreens(room.members);
+});
+
+function updateDeskScreens(members) {
+  // 先重置所有屏幕为默认颜色
+  deskScreens.forEach((d, i) => {
+    if (!d || !d.mesh) return;
+    const defColor = new THREE.Color(d.defaultColor);
+    d.mesh.material.color.copy(defColor);
+    if (d.mesh.material.emissive) {
+      d.mesh.material.emissive.copy(defColor).multiplyScalar(0.2);
+    }
+    d.mesh.material.needsUpdate = true;
+  });
+
+  // 根据成员进度更新对应屏幕 — 有人的屏幕亮起来
+  members.forEach(m => {
+    const sd = deskScreens[m.deskIndex];
+    if (!sd || !sd.mesh) return;
+    const newColor = new THREE.Color(getScreenByProgress(m.taskProgress));
+    sd.mesh.material.color.copy(newColor);
+    if (sd.mesh.material.emissive) {
+      sd.mesh.material.emissive.copy(newColor).multiplyScalar(0.7);
+      sd.mesh.material.emissiveIntensity = 0.7;
+    }
+    sd.mesh.material.needsUpdate = true;
+  });
+}
+
+// ══════════════════════════════════════
+// 通知父页面：3D 场景已就绪
+// ══════════════════════════════════════
+window.parent.postMessage({ type: 'sceneReady' }, '*');
+
+// ══════════════════════════════════════
+// 循环 — 渲染 + 跑步动画
+// ══════════════════════════════════════
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  // 跑步动画
+  runningFigures.forEach((data, pid) => {
+    const fig = memberFigures.find(f => f.id === pid);
+    if (!fig) { runningFigures.delete(pid); return; }
+    const t = performance.now() * 0.01;
+    // 身体上下弹跳
+    const bounce = Math.abs(Math.sin(t * 1.5)) * 0.5;
+    fig.group.position.y = 0.8 + bounce;
+    // 手臂摆动
+    fig.group.children.forEach(child => {
+      if (child.geometry && child.geometry.type === 'CylinderGeometry' &&
+          child.position.y > 1 && child.position.y < 2.5) {
+        child.rotation.z += (Math.sin(t * 1.5) - Math.sin((t - 0.1) * 1.5)) * 2;
+      }
+    });
+  });
+
+  // 🐱 猫巡逻动画
+  const now = performance.now() / 1000;
+  const dt = Math.min(now - catLastTime, 0.1); // cap delta
+  catLastTime = now;
+
+  // 自动冒泡
+  catAutoBubbleTimer += dt;
+  if (catAutoBubbleTimer > 15) { // 每15秒冒泡
+    catAutoBubbleTimer = 0;
+    const msg = catBubbleMessages[Math.floor(Math.random() * catBubbleMessages.length)];
+    showCatBubble(msg, 3500);
+  }
+
+  // 光环旋转
+  halo.rotation.z += dt * 1.2;
+
+  if (catRestTimer > 0) {
+    catRestTimer -= dt;
+    // 休息时 — 坐姿：轻微呼吸起伏
+    const breath = Math.sin(now * 2.5) * 0.04;
+    catGroup.children.forEach(child => {
+      if (child === bodyMesh) {
+        child.scale.y = 0.7 + breath;
+      }
+    });
+    // 尾巴轻轻摇摆
+    if (tailMesh) {
+      tailMesh.rotation.y = Math.sin(now * 3) * 0.25;
+      tailMesh.rotation.z = 0.15 + Math.sin(now * 2.7) * 0.1;
+    }
+    // 更新气泡位置跟随猫
+    if (catBubble) {
+      catBubble.position.copy(catGroup.position);
+      catBubble.position.y += 3.2;
+    }
+  } else {
+    // 行走 — 朝向下一个路径点
+    const target = catWaypoints[(catPatrolIndex + 1) % catWaypoints.length];
+    const dir = new THREE.Vector3().subVectors(target, catGroup.position);
+    dir.y = 0;
+    const dist = dir.length();
+
+    if (dist < 0.3) {
+      catPatrolIndex = (catPatrolIndex + 1) % catWaypoints.length;
+      catRestTimer = Math.random() * 3 + 2; // 休息2-5秒
+      catRestDuration = catRestTimer;
+      // 随机冒泡
+      if (Math.random() < 0.5) {
+        const msg = catBubbleMessages[Math.floor(Math.random() * catBubbleMessages.length)];
+        showCatBubble(msg, 3000);
+      }
+    } else {
+      dir.normalize();
+      catGroup.position.x += dir.x * catMoveSpeed * dt;
+      catGroup.position.z += dir.z * catMoveSpeed * dt;
+      // 脸朝行走方向
+      const angle = Math.atan2(dir.x, dir.z);
+      const currentAngle = catGroup.rotation.y;
+      let diff = angle - currentAngle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      catGroup.rotation.y += diff * Math.min(1, dt * 6);
+
+      // 行走时的身体起伏
+      const walkBounce = Math.abs(Math.sin(now * 7)) * 0.08;
+      catGroup.position.y = 0.02 + walkBounce;
+
+      // 尾巴摇摆
+      if (tailMesh) {
+        tailMesh.rotation.y = Math.sin(now * 5) * 0.35;
+        tailMesh.rotation.z = 0.05 + Math.sin(now * 4.5) * 0.08;
+      }
+    }
+
+    // 更新气泡位置
+    if (catBubble) {
+      catBubble.position.copy(catGroup.position);
+      catBubble.position.y += 3.2;
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
